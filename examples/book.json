@@ -1,0 +1,15 @@
+{
+  "title": "示例作品",
+  "author": "示例作者",
+  "source_id": "example-user-source",
+  "source_url": "https://example.org/book",
+  "chapters": [
+    {
+      "title": "第一章",
+      "body": "这是用户自己编写的示例章节。它仅用于验证 Rust 数据结构和审计功能。这里并不包含任何真实作品的正文。测试程序会检查章节来源、正文长度、目录差异、重复章节和审核状态，并且不会直接发布书籍。",
+      "source_id": "example-user-source",
+      "source_url": "https://example.org/book/1",
+      "ocr": false
+    }
+  ]
+}

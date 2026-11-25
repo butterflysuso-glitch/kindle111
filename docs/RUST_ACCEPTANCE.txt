@@ -1,0 +1,60 @@
+KindleProject V2 Rust — 按阶段验收，不自动部署
+
+这是 Rust 迁移工作版的验收要求。只有本地 Windows Agent 具备 Rust 工具链和 Calibre 的实际运行证据；云端没有运行 cargo 的环境，因此云端生成的源码、示例、测试只说明实现已编写，不能当作编译通过。
+
+一、隔离部署
+
+1. 把 ZIP 解压进全新目录，不覆盖 C:\KindleProject、C:\KindleNovelDL 或旧书库。
+2. 禁止创建计划任务、系统服务、开机启动、注册表启动项、防火墙规则、系统代理修改。
+3. 私有书源、真实书籍正文、密钥、登录凭证与访问令牌都放在用户自有数据目录，不放入源码和构建产物。
+4. 保存 rustc --version、cargo --version、Calibre ebook-convert 的明确路径；不做不必要的软件下载。
+
+二、原生 Rust 构建
+
+1. 执行 BUILD_WINDOWS.ps1。脚本仅在工程目录生成 Cargo.lock、target 等本地文件。
+2. cargo fmt --all 必须通过；cargo test --locked 必须通过，尤其包括 tests/integration.rs。
+3. cargo build --locked --release 必须成功，记录可执行文件大小和 SHA256。
+4. 若 cargo 依赖下载失败，按网络错误处理，不修改测试和质量门禁来制造通过结果。
+5. 尽可能执行 cargo clippy --all-targets -- -D warnings，编译器告警逐项核对。
+
+三、数据与审计
+
+1. 使用 examples/book.json 和 examples/catalog.json 运行 intake 命令，检查审计 JSON、v2-case.json、decisions-pending.json、manifest.json、dashboard.html 完整生成。
+2. 相同目标目录重复运行应当失败，不允许覆盖。
+3. 核对 manifest.publication_permitted 必须为 false。
+4. 手动改变测试章的 source_id，检查 MIXED_SOURCE 问题是否出现。
+5. 手动改变正文一个字符，检查 review 的 case_id/完整正文哈希是否拒绝旧决策。
+6. 不使用“章节标题吻合”代替完本认证，目录差异仅是候选问题。
+
+四、AI 审核与增量复用
+
+1. 首次 case 生成的模板内没有相邻章节审核结果，不能伪造已审核标签。
+2. 对已有实际人工或 AI 验证记录，必须保留完整案件、原正文哈希、来源 URL 哈希、真实审核结论和理由。
+3. 运行 reuse 时，只能复用正文/来源/标题不变且仍直接相邻的 coherent 记录；插章两侧、改变来源、修改正文和存疑结论必须重新审核。
+4. Rust 的审核规则尚未证明与 V1.8 224 项历史回归完全一致；请仅作为待测迁移实现使用，不能替换原系统的正式修书门禁。
+
+五、缺章补入
+
+1. 只有合法取得的全文可用于补章，元数据标题或网页预览不等于正文。
+2. 补章对象包括 title、body、source_url、acquisition、evidence_note；OCR 另需 image_sha256 与人工复核状态 APPROVED。
+3. 原目录中已有的章节不得覆盖。插入完必须重新生成 Rust 审核案件，原有相邻边界不能直接当作新边界已核实。
+4. 不自动执行图片网站的验证码、登录、DRM 绕过、系统代理变更。
+
+六、EPUB 与 Calibre
+
+1. epub-preview 只能在 Rust 相邻审核全部无疑义时运行。输出的书名包含“待最终核验·预览”，不能当作正式完本。
+2. 使用 inspect-epub 检查 mimetype 和 OPF 正文章节引用，再使用正式 EPUBCheck 做规范验证。
+3. AZW3 转换必须显式提供 Calibre ebook-convert 路径和对应 EPUB 的 SHA256；只允许输出文件名包含 preview 的 .azw3。
+4. Calibre 子进程超时 180 秒，超时要停止这次启动的精确 PID，并清理该次未完成的 AZW3，而不是杀掉其他 Calibre 进程。
+5. 校验生成文件 SHA256 和实际章节数；必要时在 Kindle 原生界面打开测试，但须用户明确批准设备写入。
+
+七、发布与清理
+
+1. Rust gate 当前明确返回 publication_permitted=false；这是有意的安全边界，因为 V1.8 真实性和完本认证规则还没有完全迁移。
+2. 任何人不得为了得到 ready 成品把 gate 改成“总是通过”。
+3. 不自动停止 Kindle framework，不修改 rootfs，不清理旧 Reader、Calibre 或备份，不设置锁屏补丁。
+4. 本地测试完成时所有临时进程须退出，系统默认零常驻。
+
+八、阶段交付
+
+一次性提交：构建日志、Cargo 测试数量与失败明细、Rust 二进制 SHA256、样例审计报告、EPUBCheck 结果、Calibre 转换记录、仍未迁移的 V1.8 规则与 Kindle 设备验收缺口。未完成模块如实写“未完成”，不要称 V2 全部上线。

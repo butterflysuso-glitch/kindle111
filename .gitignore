@@ -1,0 +1,9 @@
+/target/
+/runs/
+/data/
+*.epub
+*.azw3
+*.png
+*.log
+*.env
+*credentials*
